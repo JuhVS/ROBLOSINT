@@ -1,4 +1,5 @@
 import requests
+import json
 from datetime import datetime
 
 BASE_HEADERS = {"User-Agent": "Roblox/WinInet"}
@@ -57,6 +58,22 @@ def calculate_age(created):
     return (datetime.utcnow() - created_date).days
 
 
+def build_user_data(user_id):
+    user = get_user_info(user_id)
+    badges = get_badges(user_id)
+    inv = get_inventory(user_id)
+
+    return {
+        "userId": user_id,
+        "username": user.get("name"),
+        "displayName": user.get("displayName"),
+        "created": user.get("created"),
+        "accountAge": calculate_age(user.get("created")),
+        "badges": [{"id": b["id"], "name": b["name"]} for b in (badges.get("data") or [])],
+        "inventory": [{"assetId": item["assetId"], "name": item["name"]} for item in (inv.get("data") or [])]
+    }
+
+
 user_id = input("Enter Roblox User ID: ")
 
 user = get_user_info(user_id)
@@ -66,9 +83,12 @@ if not user:
     exit()
 
 filename = f"{user['name']}.txt"
+json_filename = f"{user['name']}.json"
 
-badges = get_badges(user_id)
-inv = get_inventory(user_id)
+data = build_user_data(user_id)
+
+with open(json_filename, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=2)
 
 with open(filename, "w", encoding="utf-8") as f:
     f.write("=== USER INFO ===\n")
@@ -78,37 +98,37 @@ with open(filename, "w", encoding="utf-8") as f:
     f.write(f"Account Age: {calculate_age(user['created'])} days\n")
 
     f.write("\n=== BADGES ===\n")
-    if badges and "data" in badges:
-        for b in badges["data"]:
+    if data["badges"]:
+        for b in data["badges"]:
             f.write(f"- {b['name']} (ID: {b['id']})\n")
     else:
         f.write("No badges or private.\n")
 
     f.write("\n=== INVENTORY ===\n")
-    if inv and "data" in inv:
-        for item in inv["data"]:
+    if data["inventory"]:
+        for item in data["inventory"]:
             f.write(f"- {item['name']} (ID: {item['assetId']})\n")
     else:
         f.write("Inventory private or empty.\n")
 
-print(f"\nResults saved to {filename}")
+print(f"\nResults saved to {filename} and {json_filename}")
 
 print("\n=== USER INFO ===")
-print(f"Username: {user['name']}")
-print(f"Display Name: {user['displayName']}")
-print(f"Created: {user['created']}")
-print(f"Account Age: {calculate_age(user['created'])} days")
+print(f"Username: {data['username']}")
+print(f"Display Name: {data['displayName']}")
+print(f"Created: {data['created']}")
+print(f"Account Age: {data['accountAge']} days")
 
 print("\n=== BADGES ===")
-if badges and "data" in badges:
-    for b in badges["data"]:
+if data["badges"]:
+    for b in data["badges"]:
         print(f"- {b['name']} (ID: {b['id']})")
 else:
     print("No badges or private.")
 
 print("\n=== INVENTORY ===")
-if inv and "data" in inv:
-    for item in inv["data"]:
+if data["inventory"]:
+    for item in data["inventory"]:
         print(f"- {item['name']} (ID: {item['assetId']})")
 else:
     print("Inventory private or empty.")
