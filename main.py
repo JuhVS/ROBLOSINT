@@ -53,6 +53,66 @@ def check_item(user_id, asset_id):
     r = requests.get(url, headers=BASE_HEADERS)
     return r.json()
 
+def get_friends(user_id):
+    all_friends = []
+    cursor = None
+    while True:
+        url = f"https://friends.roblox.com/v1/users/{user_id}/friends?limit=100"
+        if cursor:
+            url += f"&cursor={cursor}"
+        r = requests.get(url, headers=BASE_HEADERS)
+        data = r.json() if r.status_code == 200 else None
+        if not data or "data" not in data:
+            break
+        all_friends.extend(data["data"])
+        cursor = data.get("nextPageCursor")
+        if not cursor:
+            break
+    return {"data": all_friends} if all_friends else {"data": []}
+
+def get_followers(user_id):
+    all_followers = []
+    cursor = None
+    while True:
+        url = f"https://friends.roblox.com/v1/users/{user_id}/followers?limit=100"
+        if cursor:
+            url += f"&cursor={cursor}"
+        r = requests.get(url, headers=BASE_HEADERS)
+        data = r.json() if r.status_code == 200 else None
+        if not data or "data" not in data:
+            break
+        all_followers.extend(data["data"])
+        cursor = data.get("nextPageCursor")
+        if not cursor:
+            break
+    return {"data": all_followers} if all_followers else {"data": []}
+
+def get_followings(user_id):
+    all_followings = []
+    cursor = None
+    while True:
+        url = f"https://friends.roblox.com/v1/users/{user_id}/followings?limit=100"
+        if cursor:
+            url += f"&cursor={cursor}"
+        r = requests.get(url, headers=BASE_HEADERS)
+        data = r.json() if r.status_code == 200 else None
+        if not data or "data" not in data:
+            break
+        all_followings.extend(data["data"])
+        cursor = data.get("nextPageCursor")
+        if not cursor:
+            break
+    return {"data": all_followings} if all_followings else {"data": []}
+
+def resolve_users(user_ids):
+    if not user_ids:
+        return []
+    url = "https://users.roblox.com/v1/users"
+    r = requests.post(url, headers=BASE_HEADERS, json={"userIds": user_ids})
+    if r.status_code == 200:
+        return r.json().get("data", [])
+    return []
+
 def calculate_age(created):
     created_date = datetime.fromisoformat(created.replace("Z", ""))
     return (datetime.utcnow() - created_date).days
@@ -62,6 +122,16 @@ def build_user_data(user_id):
     user = get_user_info(user_id)
     badges = get_badges(user_id)
     inv = get_inventory(user_id)
+    friends = get_friends(user_id)
+    followers = get_followers(user_id)
+    followings = get_followings(user_id)
+
+    friend_ids = [f["id"] for f in friends.get("data", [])]
+    follower_ids = [fol["id"] for fol in followers.get("data", [])]
+    following_ids = [fing["id"] for fing in followings.get("data", [])]
+
+    all_ids = list(set(friend_ids + follower_ids + following_ids))
+    resolved = {u["id"]: u for u in resolve_users(all_ids)}
 
     return {
         "userId": user_id,
@@ -70,7 +140,10 @@ def build_user_data(user_id):
         "created": user.get("created") if user else None,
         "accountAge": calculate_age(user.get("created")) if user and user.get("created") else None,
         "badges": badges.get("data", []) if badges else [],
-        "inventory": inv.get("data", []) if inv else []
+        "inventory": inv.get("data", []) if inv else [],
+        "friends": [{"userId": f["id"], "username": resolved.get(f["id"], {}).get("name", ""), "displayName": resolved.get(f["id"], {}).get("displayName", "")} for f in friends.get("data", [])],
+        "followers": [{"userId": fo["id"], "username": resolved.get(fo["id"], {}).get("name", ""), "displayName": resolved.get(fo["id"], {}).get("displayName", "")} for fo in followers.get("data", [])],
+        "followings": [{"userId": fing["id"], "username": resolved.get(fing["id"], {}).get("name", ""), "displayName": resolved.get(fing["id"], {}).get("displayName", "")} for fing in followings.get("data", [])]
     }
 
 
@@ -109,6 +182,27 @@ with open(filename, "w", encoding="utf-8") as f:
     else:
         f.write("Inventory private or empty.\n")
 
+    f.write("\n=== FRIENDS ===\n")
+    if data["friends"]:
+        for fr in data["friends"]:
+            f.write(f"- {fr['username'] or fr['userId']} (ID: {fr['userId']})\n")
+    else:
+        f.write("No friends or private.\n")
+
+    f.write("\n=== FOLLOWERS ===\n")
+    if data["followers"]:
+        for fo in data["followers"]:
+            f.write(f"- {fo['username'] or fo['userId']} (ID: {fo['userId']})\n")
+    else:
+        f.write("No followers or private.\n")
+
+    f.write("\n=== FOLLOWINGS ===\n")
+    if data["followings"]:
+        for fing in data["followings"]:
+            f.write(f"- {fing['username'] or fing['userId']} (ID: {fing['userId']})\n")
+    else:
+        f.write("No followings or private.\n")
+
 print(f"\nResults saved to {filename} and {json_filename}")
 
 print("\n=== USER INFO ===")
@@ -130,6 +224,27 @@ if data["inventory"]:
         print(f"- {item['name']} (ID: {item['assetId']})")
 else:
     print("Inventory private or empty.")
+
+print("\n=== FRIENDS ===")
+if data["friends"]:
+    for fr in data["friends"]:
+        print(f"- {fr['username'] or fr['userId']} (ID: {fr['userId']})")
+else:
+    print("No friends or private.")
+
+print("\n=== FOLLOWERS ===")
+if data["followers"]:
+    for fo in data["followers"]:
+        print(f"- {fo['username'] or fo['userId']} (ID: {fo['userId']})")
+else:
+    print("No followers or private.")
+
+print("\n=== FOLLOWINGS ===")
+if data["followings"]:
+    for fing in data["followings"]:
+        print(f"- {fing['username'] or fing['userId']} (ID: {fing['userId']})")
+else:
+    print("No followings or private.")
 
 badge_check = input("\nCheck specific badge ID (or Enter to skip): ")
 if badge_check:
