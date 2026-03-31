@@ -31,6 +31,20 @@ def check_badge(user_id, badge_id):
     r = requests.get(url, headers=BASE_HEADERS)
     return r.json()
 
+def get_badge_award_dates(user_id, badge_ids):
+    if not badge_ids:
+        return {}
+    award_dates = {}
+    for i in range(0, len(badge_ids), 32):
+        batch = badge_ids[i:i+100]
+        url = f"https://badges.roblox.com/v1/users/{user_id}/badges/awarded-dates?badgeIds={','.join(map(str, batch))}"
+        r = requests.get(url, headers=BASE_HEADERS)
+        if r.status_code == 200:
+            data = r.json()
+            for item in data.get("data", []):
+                award_dates[item["badgeId"]] = item.get("awardedDate")
+    return award_dates
+
 def get_inventory(user_id):
     all_items = []
     cursor = None
@@ -144,13 +158,16 @@ def build_user_data(user_id):
 
     resolved = {u["id"]: u for u in resolve_users(friend_ids)}
 
+    badge_ids = [b["id"] for b in badges.get("data", [])]
+    award_dates = get_badge_award_dates(user_id, badge_ids)
+
     return {
         "userId": user_id,
         "username": user.get("name") if user else None,
         "displayName": user.get("displayName") if user else None,
         "created": user.get("created") if user else None,
         "accountAge": calculate_age(user.get("created")) if user and user.get("created") else None,
-        "badges": [{"id": b["id"], "name": b["name"], "placeId": b.get("awarder", {}).get("id"), "creatorId": b.get("creator", {}).get("id"), "creatorName": b.get("creator", {}).get("name")} for b in badges.get("data", [])] if badges else [],
+        "badges": [{"id": b["id"], "name": b["name"], "placeId": b.get("awarder", {}).get("id"), "creatorId": b.get("creator", {}).get("id"), "creatorName": b.get("creator", {}).get("name"), "awardedDate": award_dates.get(b["id"])} for b in badges.get("data", [])] if badges else [],
         "inventory": [{"assetId": item["assetId"], "name": item["name"]} for item in inv.get("data", [])] if inv else [],
         "friends": [{"userId": f["id"], "username": resolved.get(f["id"], {}).get("name", ""), "displayName": resolved.get(f["id"], {}).get("displayName", "")} for f in friends.get("data", [])],
         "followers": [fo["id"] for fo in followers.get("data", [])],
