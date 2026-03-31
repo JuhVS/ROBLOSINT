@@ -104,6 +104,14 @@ def get_followings(user_id):
             break
     return {"data": all_followings} if all_followings else {"data": []}
 
+def get_groups(user_id):
+    url = f"https://groups.roblox.com/v2/users/{user_id}/groups/roles"
+    r = requests.get(url, headers=BASE_HEADERS)
+    if r.status_code == 200:
+        data = r.json()
+        return {"data": data.get("data", [])} if data.get("data") else {"data": []}
+    return {"data": []}
+
 def resolve_users(user_ids):
     if not user_ids:
         return []
@@ -128,6 +136,7 @@ def build_user_data(user_id):
     friends = get_friends(user_id)
     followers = get_followers(user_id)
     followings = get_followings(user_id)
+    groups = get_groups(user_id)
 
     friend_ids = [f["id"] for f in friends.get("data", [])]
     follower_ids = [fol["id"] for fol in followers.get("data", [])]
@@ -145,7 +154,8 @@ def build_user_data(user_id):
         "inventory": [{"assetId": item["assetId"], "name": item["name"]} for item in inv.get("data", [])] if inv else [],
         "friends": [{"userId": f["id"], "username": resolved.get(f["id"], {}).get("name", ""), "displayName": resolved.get(f["id"], {}).get("displayName", "")} for f in friends.get("data", [])],
         "followers": [fo["id"] for fo in followers.get("data", [])],
-        "followings": [fing["id"] for fing in followings.get("data", [])]
+        "followings": [fing["id"] for fing in followings.get("data", [])],
+        "groups": [{"groupId": g["group"]["id"], "groupName": g["group"]["name"], "roleName": g["role"]["name"], "rank": g["role"]["rank"]} for g in groups.get("data", [])]
     }
 
 
@@ -205,6 +215,13 @@ with open(filename, "w", encoding="utf-8") as f:
     else:
         f.write("No followings or private.\n")
 
+    f.write("\n=== GROUPS ===\n")
+    if data["groups"]:
+        for g in data["groups"]:
+            f.write(f"- {g['groupName']} | {g['roleName']} (Rank: {g['rank']}) (ID: {g['groupId']})\n")
+    else:
+        f.write("No groups.\n")
+
 print(f"\nResults saved to {filename} and {json_filename}")
 
 print("\n=== USER INFO ===")
@@ -247,6 +264,13 @@ if data["followings"]:
         print(f"- ID: {fing}")
 else:
     print("No followings or private.")
+
+print("\n=== GROUPS ===")
+if data["groups"]:
+    for g in data["groups"]:
+        print(f"- {g['groupName']} | {g['roleName']} (Rank: {g['rank']}) (ID: {g['groupId']})")
+else:
+    print("No groups.")
 
 badge_check = input("\nCheck specific badge ID (or Enter to skip): ")
 if badge_check:
