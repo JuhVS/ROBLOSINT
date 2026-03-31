@@ -150,7 +150,7 @@ def build_user_data(user_id):
         "displayName": user.get("displayName") if user else None,
         "created": user.get("created") if user else None,
         "accountAge": calculate_age(user.get("created")) if user and user.get("created") else None,
-        "badges": [{"id": b["id"], "name": b["name"]} for b in badges.get("data", [])] if badges else [],
+        "badges": [{"id": b["id"], "name": b["name"], "placeId": b.get("awarder", {}).get("id"), "creatorId": b.get("creator", {}).get("id"), "creatorName": b.get("creator", {}).get("name")} for b in badges.get("data", [])] if badges else [],
         "inventory": [{"assetId": item["assetId"], "name": item["name"]} for item in inv.get("data", [])] if inv else [],
         "friends": [{"userId": f["id"], "username": resolved.get(f["id"], {}).get("name", ""), "displayName": resolved.get(f["id"], {}).get("displayName", "")} for f in friends.get("data", [])],
         "followers": [fo["id"] for fo in followers.get("data", [])],
