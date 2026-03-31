@@ -24,7 +24,7 @@ def get_badges(user_id):
         cursor = data.get("nextPageCursor")
         if not cursor:
             break
-    return {"data": all_badges} if all_badges else None
+    return {"data": all_badges} if all_badges else {"data": []}
 
 def check_badge(user_id, badge_id):
     url = f"https://badges.roblox.com/v1/users/{user_id}/badges/awarded-dates?badgeIds={badge_id}"
@@ -46,7 +46,7 @@ def get_inventory(user_id):
         cursor = data.get("nextPageCursor")
         if not cursor:
             break
-    return {"data": all_items} if all_items else None
+    return {"data": all_items} if all_items else {"data": []}
 
 def check_item(user_id, asset_id):
     url = f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}"
@@ -65,12 +65,12 @@ def build_user_data(user_id):
 
     return {
         "userId": user_id,
-        "username": user.get("name"),
-        "displayName": user.get("displayName"),
-        "created": user.get("created"),
-        "accountAge": calculate_age(user.get("created")),
-        "badges": [{"id": b["id"], "name": b["name"]} for b in (badges.get("data") or [])],
-        "inventory": [{"assetId": item["assetId"], "name": item["name"]} for item in (inv.get("data") or [])]
+        "username": user.get("name") if user else None,
+        "displayName": user.get("displayName") if user else None,
+        "created": user.get("created") if user else None,
+        "accountAge": calculate_age(user.get("created")) if user and user.get("created") else None,
+        "badges": badges.get("data", []) if badges else [],
+        "inventory": inv.get("data", []) if inv else []
     }
 
 
