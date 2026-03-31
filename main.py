@@ -41,6 +41,34 @@ if not user:
     print("User not found.")
     exit()
 
+filename = f"{user['name']}.txt"
+
+badges = get_badges(user_id)
+inv = get_inventory(user_id)
+
+with open(filename, "w", encoding="utf-8") as f:
+    f.write("=== USER INFO ===\n")
+    f.write(f"Username: {user['name']}\n")
+    f.write(f"Display Name: {user['displayName']}\n")
+    f.write(f"Created: {user['created']}\n")
+    f.write(f"Account Age: {calculate_age(user['created'])} days\n")
+
+    f.write("\n=== BADGES (sample) ===\n")
+    if badges and "data" in badges:
+        for b in badges["data"][:5]:
+            f.write(f"- {b['name']} (ID: {b['id']})\n")
+    else:
+        f.write("No badges or private.\n")
+
+    f.write("\n=== INVENTORY (sample) ===\n")
+    if inv and "data" in inv:
+        for item in inv["data"][:5]:
+            f.write(f"- {item['name']} (ID: {item['assetId']})\n")
+    else:
+        f.write("Inventory private or empty.\n")
+
+print(f"\nResults saved to {filename}")
+
 print("\n=== USER INFO ===")
 print(f"Username: {user['name']}")
 print(f"Display Name: {user['displayName']}")
@@ -48,8 +76,6 @@ print(f"Created: {user['created']}")
 print(f"Account Age: {calculate_age(user['created'])} days")
 
 print("\n=== BADGES (sample) ===")
-badges = get_badges(user_id)
-
 if badges and "data" in badges:
     for b in badges["data"][:5]:
         print(f"- {b['name']} (ID: {b['id']})")
@@ -57,8 +83,6 @@ else:
     print("No badges or private.")
 
 print("\n=== INVENTORY (sample) ===")
-inv = get_inventory(user_id)
-
 if inv and "data" in inv:
     for item in inv["data"][:5]:
         print(f"- {item['name']} (ID: {item['assetId']})")
