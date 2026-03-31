@@ -76,26 +76,24 @@ def build_user_data(user_id):
 
 user_id = input("Enter Roblox User ID: ")
 
-user = get_user_info(user_id)
+data = build_user_data(user_id)
 
-if not user:
+if not data["username"]:
     print("User not found.")
     exit()
 
-filename = f"{user['name']}.txt"
-json_filename = f"{user['name']}.json"
-
-data = build_user_data(user_id)
+filename = f"{data['username']}.txt"
+json_filename = f"{data['username']}.json"
 
 with open(json_filename, "w", encoding="utf-8") as f:
     json.dump(data, f, indent=2)
 
 with open(filename, "w", encoding="utf-8") as f:
     f.write("=== USER INFO ===\n")
-    f.write(f"Username: {user['name']}\n")
-    f.write(f"Display Name: {user['displayName']}\n")
-    f.write(f"Created: {user['created']}\n")
-    f.write(f"Account Age: {calculate_age(user['created'])} days\n")
+    f.write(f"Username: {data['username']}\n")
+    f.write(f"Display Name: {data['displayName']}\n")
+    f.write(f"Created: {data['created']}\n")
+    f.write(f"Account Age: {data['accountAge']} days\n")
 
     f.write("\n=== BADGES ===\n")
     if data["badges"]:
