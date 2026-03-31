@@ -107,11 +107,14 @@ def get_followings(user_id):
 def resolve_users(user_ids):
     if not user_ids:
         return []
-    url = "https://users.roblox.com/v1/users"
-    r = requests.post(url, headers=BASE_HEADERS, json={"userIds": user_ids})
-    if r.status_code == 200:
-        return r.json().get("data", [])
-    return []
+    resolved = []
+    for i in range(0, len(user_ids), 32):
+        batch = user_ids[i:i+32]
+        url = "https://users.roblox.com/v1/users"
+        r = requests.post(url, headers=BASE_HEADERS, json={"userIds": batch})
+        if r.status_code == 200:
+            resolved.extend(r.json().get("data", []))
+    return resolved
 
 def calculate_age(created):
     created_date = datetime.fromisoformat(created.replace("Z", ""))
@@ -130,8 +133,7 @@ def build_user_data(user_id):
     follower_ids = [fol["id"] for fol in followers.get("data", [])]
     following_ids = [fing["id"] for fing in followings.get("data", [])]
 
-    all_ids = list(set(friend_ids + follower_ids + following_ids))
-    resolved = {u["id"]: u for u in resolve_users(all_ids)}
+    resolved = {u["id"]: u for u in resolve_users(friend_ids)}
 
     return {
         "userId": user_id,
@@ -142,8 +144,8 @@ def build_user_data(user_id):
         "badges": badges.get("data", []) if badges else [],
         "inventory": inv.get("data", []) if inv else [],
         "friends": [{"userId": f["id"], "username": resolved.get(f["id"], {}).get("name", ""), "displayName": resolved.get(f["id"], {}).get("displayName", "")} for f in friends.get("data", [])],
-        "followers": [{"userId": fo["id"], "username": resolved.get(fo["id"], {}).get("name", ""), "displayName": resolved.get(fo["id"], {}).get("displayName", "")} for fo in followers.get("data", [])],
-        "followings": [{"userId": fing["id"], "username": resolved.get(fing["id"], {}).get("name", ""), "displayName": resolved.get(fing["id"], {}).get("displayName", "")} for fing in followings.get("data", [])]
+        "followers": [fo["id"] for fo in followers.get("data", [])],
+        "followings": [fing["id"] for fing in followings.get("data", [])]
     }
 
 
@@ -192,14 +194,14 @@ with open(filename, "w", encoding="utf-8") as f:
     f.write("\n=== FOLLOWERS ===\n")
     if data["followers"]:
         for fo in data["followers"]:
-            f.write(f"- {fo['username'] or fo['userId']} (ID: {fo['userId']})\n")
+            f.write(f"- ID: {fo}\n")
     else:
         f.write("No followers or private.\n")
 
     f.write("\n=== FOLLOWINGS ===\n")
     if data["followings"]:
         for fing in data["followings"]:
-            f.write(f"- {fing['username'] or fing['userId']} (ID: {fing['userId']})\n")
+            f.write(f"- ID: {fing}\n")
     else:
         f.write("No followings or private.\n")
 
@@ -235,14 +237,14 @@ else:
 print("\n=== FOLLOWERS ===")
 if data["followers"]:
     for fo in data["followers"]:
-        print(f"- {fo['username'] or fo['userId']} (ID: {fo['userId']})")
+        print(f"- ID: {fo}")
 else:
     print("No followers or private.")
 
 print("\n=== FOLLOWINGS ===")
 if data["followings"]:
     for fing in data["followings"]:
-        print(f"- {fing['username'] or fing['userId']} (ID: {fing['userId']})")
+        print(f"- ID: {fing}")
 else:
     print("No followings or private.")
 
