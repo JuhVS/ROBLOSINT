@@ -9,9 +9,21 @@ def get_user_info(user_id):
     return r.json() if r.status_code == 200 else None
 
 def get_badges(user_id):
-    url = f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=10"
-    r = requests.get(url, headers=BASE_HEADERS)
-    return r.json() if r.status_code == 200 else None
+    all_badges = []
+    cursor = None
+    while True:
+        url = f"https://badges.roblox.com/v1/users/{user_id}/badges?limit=100&sortOrder=Asc"
+        if cursor:
+            url += f"&cursor={cursor}"
+        r = requests.get(url, headers=BASE_HEADERS)
+        data = r.json() if r.status_code == 200 else None
+        if not data or "data" not in data:
+            break
+        all_badges.extend(data["data"])
+        cursor = data.get("nextPageCursor")
+        if not cursor:
+            break
+    return {"data": all_badges} if all_badges else None
 
 def check_badge(user_id, badge_id):
     url = f"https://badges.roblox.com/v1/users/{user_id}/badges/awarded-dates?badgeIds={badge_id}"
@@ -19,9 +31,21 @@ def check_badge(user_id, badge_id):
     return r.json()
 
 def get_inventory(user_id):
-    url = f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles?limit=10"
-    r = requests.get(url, headers=BASE_HEADERS)
-    return r.json() if r.status_code == 200 else None
+    all_items = []
+    cursor = None
+    while True:
+        url = f"https://inventory.roblox.com/v1/users/{user_id}/assets/collectibles?limit=100"
+        if cursor:
+            url += f"&cursor={cursor}"
+        r = requests.get(url, headers=BASE_HEADERS)
+        data = r.json() if r.status_code == 200 else None
+        if not data or "data" not in data:
+            break
+        all_items.extend(data["data"])
+        cursor = data.get("nextPageCursor")
+        if not cursor:
+            break
+    return {"data": all_items} if all_items else None
 
 def check_item(user_id, asset_id):
     url = f"https://inventory.roblox.com/v1/users/{user_id}/items/Asset/{asset_id}"
@@ -53,16 +77,16 @@ with open(filename, "w", encoding="utf-8") as f:
     f.write(f"Created: {user['created']}\n")
     f.write(f"Account Age: {calculate_age(user['created'])} days\n")
 
-    f.write("\n=== BADGES (sample) ===\n")
+    f.write("\n=== BADGES ===\n")
     if badges and "data" in badges:
-        for b in badges["data"][:5]:
+        for b in badges["data"]:
             f.write(f"- {b['name']} (ID: {b['id']})\n")
     else:
         f.write("No badges or private.\n")
 
-    f.write("\n=== INVENTORY (sample) ===\n")
+    f.write("\n=== INVENTORY ===\n")
     if inv and "data" in inv:
-        for item in inv["data"][:5]:
+        for item in inv["data"]:
             f.write(f"- {item['name']} (ID: {item['assetId']})\n")
     else:
         f.write("Inventory private or empty.\n")
@@ -75,16 +99,16 @@ print(f"Display Name: {user['displayName']}")
 print(f"Created: {user['created']}")
 print(f"Account Age: {calculate_age(user['created'])} days")
 
-print("\n=== BADGES (sample) ===")
+print("\n=== BADGES ===")
 if badges and "data" in badges:
-    for b in badges["data"][:5]:
+    for b in badges["data"]:
         print(f"- {b['name']} (ID: {b['id']})")
 else:
     print("No badges or private.")
 
-print("\n=== INVENTORY (sample) ===")
+print("\n=== INVENTORY ===")
 if inv and "data" in inv:
-    for item in inv["data"][:5]:
+    for item in inv["data"]:
         print(f"- {item['name']} (ID: {item['assetId']})")
 else:
     print("Inventory private or empty.")
