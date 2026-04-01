@@ -35,8 +35,8 @@ def get_badge_award_dates(user_id, badge_ids):
     if not badge_ids:
         return {}
     award_dates = {}
-    for i in range(0, len(badge_ids), 32):
-        batch = badge_ids[i:i+100]
+    for i in range(0, len(badge_ids), 50):
+        batch = badge_ids[i:i+50]
         url = f"https://badges.roblox.com/v1/users/{user_id}/badges/awarded-dates?badgeIds={','.join(map(str, batch))}"
         r = requests.get(url, headers=BASE_HEADERS)
         if r.status_code == 200:
