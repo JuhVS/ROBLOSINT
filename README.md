@@ -2,6 +2,26 @@
 
 Roblox OSINT tool. Fetches user data, badges, inventory, friends, followers, and followings. Outputs to TXT and JSON so you can compare accounts and figure out if someone's an alt.
 
+## Visualizer
+
+So you exported some data already and now you want pretty pictures. Cool.
+
+```bash
+python graphs.py
+```
+
+Reads your JSON and dumps a PNG called `{username}_badges_timeline.png` with:
+
+- **Badge timeline**: X axis is date, Y axis is how many badges you got that day. Simple bar chart, nothing fancy.
+- **Creator colors**: Each badge creator gets their own color. All badges from the same person use the same color so you can see at a glance which creator's badges are most common. There's like 20 colors rotating so if you have 1000+ creators it'll reuse colors, whatever.
+- **Group ranks**: Only shows groups where your rank is > 200 and < 255. If rank is 255 it just says "Owner" instead of the number. Everything else gets filtered out. Yes, this is configurable in the code if you need different numbers.
+
+Dependencies: `matplotlib`. Install it if you don't have it:
+
+```bash
+pip install matplotlib
+```
+
 ## Install
 
 ```bash
