@@ -1,5 +1,6 @@
 import requests
 import json
+import time
 from datetime import datetime
 
 BASE_HEADERS = {"User-Agent": "Roblox/WinInet"}
@@ -35,14 +36,38 @@ def get_badge_award_dates(user_id, badge_ids):
     if not badge_ids:
         return {}
     award_dates = {}
-    for i in range(0, len(badge_ids), 32):
-        batch = badge_ids[i:i+100]
+    total = len(badge_ids)
+    print(f"[BADGE DATES] Fetching award dates for {total} badges...")
+    for i in range(0, len(badge_ids), 50):
+        batch = badge_ids[i:i+50]
         url = f"https://badges.roblox.com/v1/users/{user_id}/badges/awarded-dates?badgeIds={','.join(map(str, batch))}"
-        r = requests.get(url, headers=BASE_HEADERS)
-        if r.status_code == 200:
-            data = r.json()
-            for item in data.get("data", []):
-                award_dates[item["badgeId"]] = item.get("awardedDate")
+        print(f"[BADGE DATES] Requesting badges {i} to {i+len(batch)} of {total}...")
+        
+        max_retries = 5
+        for attempt in range(max_retries):
+            r = requests.get(url, headers=BASE_HEADERS)
+            if r.status_code == 200:
+                time.sleep(2)
+                break
+            elif r.status_code == 429:
+                wait_time = ((attempt + 1) * 2) + 5
+                print(f"[BADGE DATES] Rate limited! Waiting {wait_time}s before retry...")
+                time.sleep(wait_time)
+            else:
+                print(f"[BADGE DATES] Error {r.status_code} for batch starting at {i}")
+                break
+        
+        if r.status_code != 200:
+            print(f"[BADGE DATES] Failed after {max_retries} retries for batch starting at {i}")
+            continue
+            
+        data = r.json()
+        count = len(data.get("data", []))
+        print(f"[BADGE DATES] Got {count} award dates in this batch")
+        for item in data.get("data", []):
+            award_dates[item["badgeId"]] = item.get("awardedDate")
+        time.sleep(1.5)
+    print(f"[BADGE DATES] Done. Got {len(award_dates)} award dates total")
     return award_dates
 
 def get_inventory(user_id):
@@ -144,22 +169,33 @@ def calculate_age(created):
 
 
 def build_user_data(user_id):
+    print("[STATUS] Loading user info...")
     user = get_user_info(user_id)
+    print("[STATUS] Loading badges...")
     badges = get_badges(user_id)
+    print("[STATUS] Loading inventory...")
     inv = get_inventory(user_id)
+    print("[STATUS] Loading friends...")
     friends = get_friends(user_id)
+    print("[STATUS] Loading followers...")
     followers = get_followers(user_id)
+    print("[STATUS] Loading followings...")
     followings = get_followings(user_id)
+    print("[STATUS] Loading groups...")
     groups = get_groups(user_id)
 
     friend_ids = [f["id"] for f in friends.get("data", [])]
     follower_ids = [fol["id"] for fol in followers.get("data", [])]
     following_ids = [fing["id"] for fing in followings.get("data", [])]
 
+    print("[STATUS] Resolving friend usernames...")
     resolved = {u["id"]: u for u in resolve_users(friend_ids)}
 
     badge_ids = [b["id"] for b in badges.get("data", [])]
+    print("[STATUS] Fetching badge award dates...")
     award_dates = get_badge_award_dates(user_id, badge_ids)
+
+    print("[STATUS] Building final output...")
 
     return {
         "userId": user_id,
@@ -179,6 +215,8 @@ def build_user_data(user_id):
 user_id = input("Enter Roblox User ID: ")
 
 data = build_user_data(user_id)
+
+print("[STATUS] Done!")
 
 if not data["username"]:
     print("User not found.")
