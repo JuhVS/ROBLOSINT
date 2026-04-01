@@ -1,3 +1,4 @@
+import argparse
 import requests
 import json
 import time
@@ -168,7 +169,7 @@ def calculate_age(created):
     return (datetime.utcnow() - created_date).days
 
 
-def build_user_data(user_id):
+def build_user_data(user_id, simple=False):
     print("[STATUS] Loading user info...")
     user = get_user_info(user_id)
     print("[STATUS] Loading badges...")
@@ -177,23 +178,31 @@ def build_user_data(user_id):
     inv = get_inventory(user_id)
     print("[STATUS] Loading friends...")
     friends = get_friends(user_id)
-    print("[STATUS] Loading followers...")
-    followers = get_followers(user_id)
-    print("[STATUS] Loading followings...")
-    followings = get_followings(user_id)
+    
+    if not simple:
+        print("[STATUS] Loading followers...")
+        followers = get_followers(user_id)
+        print("[STATUS] Loading followings...")
+        followings = get_followings(user_id)
+    else:
+        followers = {"data": []}
+        followings = {"data": []}
+    
     print("[STATUS] Loading groups...")
     groups = get_groups(user_id)
 
     friend_ids = [f["id"] for f in friends.get("data", [])]
-    follower_ids = [fol["id"] for fol in followers.get("data", [])]
-    following_ids = [fing["id"] for fing in followings.get("data", [])]
 
     print("[STATUS] Resolving friend usernames...")
     resolved = {u["id"]: u for u in resolve_users(friend_ids)}
 
     badge_ids = [b["id"] for b in badges.get("data", [])]
-    print("[STATUS] Fetching badge award dates...")
-    award_dates = get_badge_award_dates(user_id, badge_ids)
+    
+    if not simple:
+        print("[STATUS] Fetching badge award dates...")
+        award_dates = get_badge_award_dates(user_id, badge_ids)
+    else:
+        award_dates = {}
 
     print("[STATUS] Building final output...")
 
@@ -211,128 +220,153 @@ def build_user_data(user_id):
         "groups": [{"groupId": g["group"]["id"], "groupName": g["group"]["name"], "roleName": g["role"]["name"], "rank": g["role"]["rank"]} for g in groups.get("data", [])]
     }
 
+def save_user_data(data):
+    filename = f"{data['username']}.txt"
+    json_filename = f"{data['username']}.json"
 
-user_id = input("Enter Roblox User ID: ")
+    with open(json_filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
 
-data = build_user_data(user_id)
+    with open(filename, "w", encoding="utf-8") as f:
+        f.write("=== USER INFO ===\n")
+        f.write(f"Username: {data['username']}\n")
+        f.write(f"Display Name: {data['displayName']}\n")
+        f.write(f"Created: {data['created']}\n")
+        f.write(f"Account Age: {data['accountAge']} days\n")
 
-print("[STATUS] Done!")
+        f.write("\n=== BADGES ===\n")
+        if data["badges"]:
+            for b in data["badges"]:
+                f.write(f"- {b['name']} (ID: {b['id']})\n")
+        else:
+            f.write("No badges or private.\n")
 
-if not data["username"]:
-    print("User not found.")
-    exit()
+        f.write("\n=== INVENTORY ===\n")
+        if data["inventory"]:
+            for item in data["inventory"]:
+                f.write(f"- {item['name']} (ID: {item['assetId']})\n")
+        else:
+            f.write("Inventory private or empty.\n")
 
-filename = f"{data['username']}.txt"
-json_filename = f"{data['username']}.json"
+        f.write("\n=== FRIENDS ===\n")
+        if data["friends"]:
+            for fr in data["friends"]:
+                f.write(f"- {fr['username'] or fr['userId']} (ID: {fr['userId']})\n")
+        else:
+            f.write("No friends or private.\n")
 
-with open(json_filename, "w", encoding="utf-8") as f:
-    json.dump(data, f, indent=2)
+        f.write("\n=== FOLLOWERS ===\n")
+        if data["followers"]:
+            for fo in data["followers"]:
+                f.write(f"- ID: {fo}\n")
+        else:
+            f.write("No followers or private.\n")
 
-with open(filename, "w", encoding="utf-8") as f:
-    f.write("=== USER INFO ===\n")
-    f.write(f"Username: {data['username']}\n")
-    f.write(f"Display Name: {data['displayName']}\n")
-    f.write(f"Created: {data['created']}\n")
-    f.write(f"Account Age: {data['accountAge']} days\n")
+        f.write("\n=== FOLLOWINGS ===\n")
+        if data["followings"]:
+            for fing in data["followings"]:
+                f.write(f"- ID: {fing}\n")
+        else:
+            f.write("No followings or private.\n")
 
-    f.write("\n=== BADGES ===\n")
+        f.write("\n=== GROUPS ===\n")
+        if data["groups"]:
+            for g in data["groups"]:
+                f.write(f"- {g['groupName']} | {g['roleName']} (Rank: {g['rank']}) (ID: {g['groupId']})\n")
+        else:
+            f.write("No groups.\n")
+
+    print(f"Results saved to {filename} and {json_filename}")
+
+
+def print_user_data(data):
+    print("\n=== USER INFO ===")
+    print(f"Username: {data['username']}")
+    print(f"Display Name: {data['displayName']}")
+    print(f"Created: {data['created']}")
+    print(f"Account Age: {data['accountAge']} days")
+
+    print("\n=== BADGES ===")
     if data["badges"]:
         for b in data["badges"]:
-            f.write(f"- {b['name']} (ID: {b['id']})\n")
+            print(f"- {b['name']} (ID: {b['id']})")
     else:
-        f.write("No badges or private.\n")
+        print("No badges or private.")
 
-    f.write("\n=== INVENTORY ===\n")
+    print("\n=== INVENTORY ===")
     if data["inventory"]:
         for item in data["inventory"]:
-            f.write(f"- {item['name']} (ID: {item['assetId']})\n")
+            print(f"- {item['name']} (ID: {item['assetId']})")
     else:
-        f.write("Inventory private or empty.\n")
+        print("Inventory private or empty.")
 
-    f.write("\n=== FRIENDS ===\n")
+    print("\n=== FRIENDS ===")
     if data["friends"]:
         for fr in data["friends"]:
-            f.write(f"- {fr['username'] or fr['userId']} (ID: {fr['userId']})\n")
+            print(f"- {fr['username'] or fr['userId']} (ID: {fr['userId']})")
     else:
-        f.write("No friends or private.\n")
+        print("No friends or private.")
 
-    f.write("\n=== FOLLOWERS ===\n")
+    print("\n=== FOLLOWERS ===")
     if data["followers"]:
         for fo in data["followers"]:
-            f.write(f"- ID: {fo}\n")
+            print(f"- ID: {fo}")
     else:
-        f.write("No followers or private.\n")
+        print("No followers or private.")
 
-    f.write("\n=== FOLLOWINGS ===\n")
+    print("\n=== FOLLOWINGS ===")
     if data["followings"]:
         for fing in data["followings"]:
-            f.write(f"- ID: {fing}\n")
+            print(f"- ID: {fing}")
     else:
-        f.write("No followings or private.\n")
+        print("No followings or private.")
 
-    f.write("\n=== GROUPS ===\n")
+    print("\n=== GROUPS ===")
     if data["groups"]:
         for g in data["groups"]:
-            f.write(f"- {g['groupName']} | {g['roleName']} (Rank: {g['rank']}) (ID: {g['groupId']})\n")
+            print(f"- {g['groupName']} | {g['roleName']} (Rank: {g['rank']}) (ID: {g['groupId']})")
     else:
-        f.write("No groups.\n")
+        print("No groups.")
 
-print(f"\nResults saved to {filename} and {json_filename}")
 
-print("\n=== USER INFO ===")
-print(f"Username: {data['username']}")
-print(f"Display Name: {data['displayName']}")
-print(f"Created: {data['created']}")
-print(f"Account Age: {data['accountAge']} days")
+def main():
+    parser = argparse.ArgumentParser(
+        description="ROBLOSINT - Roblox User Intelligence Tool",
+        prog="python main.py"
+    )
+    parser.add_argument("--default", action="store_true", help="Run in default mode (no questions)")
+    parser.add_argument("--userids", type=str, help="Comma-separated list of user IDs to process")
+    parser.add_argument("--simple", action="store_true", help="Skip badge award dates, followers, and followings")
 
-print("\n=== BADGES ===")
-if data["badges"]:
-    for b in data["badges"]:
-        print(f"- {b['name']} (ID: {b['id']})")
-else:
-    print("No badges or private.")
+    args = parser.parse_args()
 
-print("\n=== INVENTORY ===")
-if data["inventory"]:
-    for item in data["inventory"]:
-        print(f"- {item['name']} (ID: {item['assetId']})")
-else:
-    print("Inventory private or empty.")
+    user_ids = []
 
-print("\n=== FRIENDS ===")
-if data["friends"]:
-    for fr in data["friends"]:
-        print(f"- {fr['username'] or fr['userId']} (ID: {fr['userId']})")
-else:
-    print("No friends or private.")
+    if args.userids:
+        user_ids = [uid.strip() for uid in args.userids.split(",") if uid.strip()]
+    elif args.default:
+        user_id = input("Enter Roblox User ID: ")
+        user_ids = [user_id]
+    else:
+        user_id = input("Enter Roblox User ID: ")
+        user_ids = [user_id]
 
-print("\n=== FOLLOWERS ===")
-if data["followers"]:
-    for fo in data["followers"]:
-        print(f"- ID: {fo}")
-else:
-    print("No followers or private.")
+    for user_id in user_ids:
+        print(f"\n{'='*50}")
+        print(f"Processing user: {user_id}")
+        print(f"{'='*50}\n")
 
-print("\n=== FOLLOWINGS ===")
-if data["followings"]:
-    for fing in data["followings"]:
-        print(f"- ID: {fing}")
-else:
-    print("No followings or private.")
+        data = build_user_data(user_id, simple=args.simple)
 
-print("\n=== GROUPS ===")
-if data["groups"]:
-    for g in data["groups"]:
-        print(f"- {g['groupName']} | {g['roleName']} (Rank: {g['rank']}) (ID: {g['groupId']})")
-else:
-    print("No groups.")
+        print("[STATUS] Done!")
 
-badge_check = input("\nCheck specific badge ID (or Enter to skip): ")
-if badge_check:
-    result = check_badge(user_id, badge_check)
-    print("Badge check result:", result)
+        if not data["username"]:
+            print("User not found.")
+            continue
 
-item_check = input("Check specific asset ID (or Enter to skip): ")
-if item_check:
-    result = check_item(user_id, item_check)
-    print("Item check result:", result)
+        save_user_data(data)
+        print_user_data(data)
+
+
+if __name__ == "__main__":
+    main()
